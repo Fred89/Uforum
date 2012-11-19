@@ -1,6 +1,6 @@
-[Permalink](http://uforum.byethost5.com/ "Permalink to µForum")
+[***Bienvenue sur µforum v0.6***](http://uforum.byethost5.com/ "Permalink to µForum")
 
-***Bienvenue sur µforum v0.6*** 
+ 
 Ce forum monothread est basé sur des fichiers uniquement (pas de base de donnée sql).   
 Le concept est un peu différent des autres forums puisque l'information la plus importante mise en avant pour reconnaitre un utilisateur est son avatar (pour une fois qu'il sert à quelque chose..) 
 
@@ -26,7 +26,7 @@ Le concept est un peu différent des autres forums puisque l'information la plus
     ★ Protection des mails sur la liste des membres pour contrer le spam.   
     ★ Indicateur de message (Status Icône).  
 
-CC-BY license [Permalink](http://creativecommons.org/licenses/by/3.0/legalcode "Permalink to Creative Commons Legal Code")
+[CC-BY license](http://creativecommons.org/licenses/by/3.0/legalcode "Permalink to Creative Commons Legal Code")
 =======================
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
