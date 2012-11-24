@@ -950,7 +950,7 @@ function tronquer_texte($texte, $nbchar)
 */
 function decode($txt) {
 
-	$txt=str_replace ("\t", "     ", clean($txt));
+	$txt=str_replace ("\t", "     ", $txt);
 	$txt=str_replace ("\r\n", " <br />", $txt);
 	$res=preg_split("|\[c\].*\[/c\]|U", $txt);
 	preg_match_all("|\[c\](.*)\[/c\](.*)|U",$txt,$code,PREG_SET_ORDER);
@@ -1149,7 +1149,7 @@ function replyForm($type,$mpTo='') {
     <label class="control-label" for="message">Message</label>
     <div class="controls">
       <textarea class="input-xxlarge" rows="10" id="message" name="message">';
-	if($edit) $buffer .= clean($content);
+	if($edit) $buffer .= $content;
 	$buffer .= '</textarea></div></div>';
 	
 	if($join) $buffer .= '<div class="control-group">
@@ -1220,7 +1220,7 @@ function showPrivateMsg() {
 			$m[1]=preg_replace('/(([0-9]{1,3}\.[0-9]{1,3})\.([0-9]{1,3}\.[0-9]{1,3}))/i','\\2.x.x',$m[1]);
 			$pvtBox .= $m[1].' le '.date('d/m/Y @ H:i',$m[0]);
 		}
-		$pvtBox .= '<p>'.clean(decode($m[2])).'<p><hr />';
+		$pvtBox .= '<p>'.decode($m[2]).'<p><hr />';
 	}
 	$pvtBox .= '
 </div>	
