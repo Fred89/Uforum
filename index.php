@@ -653,7 +653,7 @@ function breadcrumbs() {
 	$mn .= '<ul class="breadcrumb"><li>Bienvenue <span class="';
 	$mn .= ($isadmin)?'text-error':'text-info';
 	$mn .= '"><strong>'.$tLogin.'</strong></span>';	
-	if($havemp) $mn .= ' <a href="#privatebox" rel="tooltip" title="Nouveau Message Privé" role="button" class="blink" data-toggle="modal"> <i class="icon-envelope"></i></a><script>function blink(selector){$(selector).fadeOut("slow", function(){$(this).fadeIn("slow", function(){blink(this);});});}blink(".blink");</script>';
+	if($havemp) $mn .= ' <a href="#privatebox" rel="tooltip" title="Nouveau Message Privé" role="button" class="blink" data-toggle="modal"> <i class="icon-inbox"></i></a><script>function blink(selector){$(selector).fadeOut("slow", function(){$(this).fadeIn("slow", function(){blink(this);});});}blink(".blink");</script>';
 	$mn .= 	'</li>
 	       </ul>';
 	return $mn;
@@ -667,7 +667,7 @@ function menu() {
 	$mn='';
 	$p = '<li><a href="';
   
-	if($siteUrl!='') $mn .= $p.$siteUrl.'" title="'.stripslashes($siteName).'">'.stripslashes($siteName).'</a>';
+	if($siteUrl!='') $mn .= $p.$siteUrl.'" title="'.$siteName.'">'.$siteName.'</a>';
 	$mn .= $p.'index.php" title="Retour a l\'accueil">Accueil</a></li><li class="divider-vertical"></li>';
 	if($ismember) {
 		$mn .= $p.'?logout=1" title="Quitter la session">Déconnexion</a></li><li class="divider-vertical"></li>';
@@ -724,7 +724,7 @@ function showTopics() {
 		$postType=$postType?'<i class="icon-star" rel="tooltip" title="Discussion importante"></i> ':'';
 		$statusIcon = (isset($_COOKIE['uFread'.$topicID]))?'<i class="icon-folder-open" rel="tooltip" title="Lu"></i>':'<i class="icon-folder-close" rel="tooltip" title="Non lu"></i>';
 		$buffer .= '<tr>
-		              <td>'.$postType.$attachment.$statusIcon.' <a href="?topic='.$topicID.'" title="afficher le sujet">'.stripslashes($titre).'</a><br />
+		              <td>'.$postType.$attachment.$statusIcon.' <a href="?topic='.$topicID.'" title="afficher le sujet">'.$titre.'</a><br />
 		                <span style="float:right; margin-right:5px; font-size:81.25%;">D&eacute;but&eacute; le '.$started.', Par ';
 		$buffer .= $forum->isMember($auteur)?'<a class="Lien" href="index.php?private='.$auteur.'" title="message privé">'.$auteur.'</a></span></td>':$auteur.'</span></td>';
 		$buffer .= '<td class="mess">'.$nombrePosts.'</td>
@@ -758,8 +758,8 @@ function showPosts() {
 			$buffer .= '<form name="sub" method="post"><input type="hidden" name="topicID" value="'.$topic.'" />';
 			$buffer .= "<span class='btn'><i class='icon-star'></i> <input style='border:none;' type='checkbox' onclick=\"window.location='?topic=".$topic."&postit=".($type?"off":"on")."'\"";/*** On epingle le sujet ou pas ***/
 			$buffer .= $type?"checked='checked' />":"/>";
-			$buffer .= "</span><input class='span3' id='appendedPrepended' type='text' value=\"".stripslashes($titre)."\" name='ntitle'><input class='btn' type='submit' value='Modifier' /></form>";/*** Modification du Titre du sujet ***/
-		} else $buffer .= stripslashes($titre);
+			$buffer .= "</span><input class='span3' id='appendedPrepended' type='text' value=\"".clean($titre)."\" name='ntitle'><input class='btn' type='submit' value='Modifier' /></form>";/*** Modification du Titre du sujet ***/
+		} else $buffer .= clean($titre);
 		$buffer .= '</div>';
 		// tooltips
 		list($num,$auths)=$topicObj->getInfo(1);
@@ -777,8 +777,8 @@ function showPosts() {
 					if($quoteMode) $quotes[$m]=$quote;
 				}
 				$buffer .= '</table></div>';
-				if($mod) $modo[$m]=($mod>1)?'Fondateur':'Modérateur';
-				else $modo[$m]='Membre';
+				if($mod) $modo[$m]=($mod>1)?'<span class="label label-important">Fondateur</span>':'<span class="label label-success">Modérateur</span>';
+				else $modo[$m]='<span class="label">Membre</span>';
 			} else $pic='';
 			// Avatar
 			$avatars[$m]=($pic!='')?'<img class="avatar" src="'.$pic.'" alt="avatar"/>':img(11,'img-circle');
@@ -787,19 +787,19 @@ function showPosts() {
 		while(list($auth,$time,$content,$attach)=$topicObj->nextReply()) {
 			$buffer .= '<table class="table table-condensed clearfix"><tr>';
 			if($forum->isMember($auth)) {
-				$buffer .= "<td class='span2'>
-          <div class='well sidebar-nav'>
-            <ul class='nav nav-list'>
-               <li class='nav-header'><a href='?private=$auth' rel='tooltip' title='Envoyer un message privé'>$auth</a></li>				
-               <li class='span1'>
-                <a class='thumbnail' onmouseover=\"showWMTT('".$auth."')\" onmouseout=\"hideWMTT()\" href='?private=".$auth."' title=''>
-                  ".$avatars[$auth]."
+				$buffer .= '<td class="span2">
+          <div class="well sidebar-nav">
+            <ul class="nav nav-list">
+               <li class="nav-header"><a href="?private='.$auth.'" rel="tooltip" title="Envoyer un message privé">'.$auth.'</a></li>				
+               <li class="span1">
+                <a class="thumbnail" onmouseover=\"showWMTT("'.$auth.'")\" onmouseout=\"hideWMTT()\" href="?private='.$auth.'" title="">
+                  '.$avatars[$auth].'
                 </a>
                </li>
-               <div class='clearfix'></div>
-               <li class='divider'></li>
-               <li><span class='label label-important'>$modo[$auth]</span></li>
-               <li class='divider'></li>";
+               <div class="clearfix"></div>
+               <li class="divider"></li>
+               <li>'.$modo[$auth].'</li>
+               <li class="divider"></li>';
 			} else {
 				$buffer .= '<td class="span2">
           <div class="well sidebar-nav">
@@ -950,7 +950,7 @@ function tronquer_texte($texte, $nbchar)
 */
 function decode($txt) {
 
-	$txt=str_replace ("\t", "     ", stripslashes($txt));
+	$txt=str_replace ("\t", "     ", clean($txt));
 	$txt=str_replace ("\r\n", " <br />", $txt);
 	$res=preg_split("|\[c\].*\[/c\]|U", $txt);
 	preg_match_all("|\[c\](.*)\[/c\](.*)|U",$txt,$code,PREG_SET_ORDER);
@@ -1149,7 +1149,7 @@ function replyForm($type,$mpTo='') {
     <label class="control-label" for="message">Message</label>
     <div class="controls">
       <textarea class="input-xxlarge" rows="10" id="message" name="message">';
-	if($edit) $buffer .= stripslashes($content);
+	if($edit) $buffer .= clean($content);
 	$buffer .= '</textarea></div></div>';
 	
 	if($join) $buffer .= '<div class="control-group">
@@ -1174,9 +1174,16 @@ function listFiles() {
 	global $cLogin,$forum;
 	$dir='membres/'.$cLogin.'/';
 	$a=$forum->getMember($cLogin); 
-	$list.='<h6>Fichiers personnels</h6>';
+	$list.='<a href="#personal_files" role="button" class="btn btn-mini btn-inverse" data-toggle="modal"><i class="icon-file icon-white"></i> Mes Fichiers personnels</a>
+	<!-- Modal -->
+<div id="personal_files" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3 id="myModalLabel">Fichiers personnels</h3>
+  </div>
+  <div class="modal-body">';
 	$h=dir($dir);
-	$id=0;
+	$id=1;
 	while ($f=$h->read()) {
 		if (($f!='.') && ($f!='..') && ($f!= $cLogin.'.mp')) {
 			$cl=($a[6]!=($dir.urlencode($f)))?'text-warning':'text-error';
@@ -1184,6 +1191,8 @@ function listFiles() {
 			$id++;
 		}
 	}
+    $list.='</div>
+</div>';	
 	return $list;
 }
 /**
@@ -1211,7 +1220,7 @@ function showPrivateMsg() {
 			$m[1]=preg_replace('/(([0-9]{1,3}\.[0-9]{1,3})\.([0-9]{1,3}\.[0-9]{1,3}))/i','\\2.x.x',$m[1]);
 			$pvtBox .= $m[1].' le '.date('d/m/Y @ H:i',$m[0]);
 		}
-		$pvtBox .= '<p>'.stripslashes(decode($m[2])).'<p><hr />';
+		$pvtBox .= '<p>'.clean(decode($m[2])).'<p><hr />';
 	}
 	$pvtBox .= '
 </div>	
@@ -1593,12 +1602,12 @@ case 'editoption':
 	if($h=@fopen('config.php','w')) {fputs($h,$config);fclose($h);}
 	if(empty($message) && file_exists('welcome.txt')) @unlink('welcome.txt');
 	else {
-		if($h=@fopen('welcome.txt','w')) {fputs($h,stripslashes($message));fclose($h);}
+		if($h=@fopen('welcome.txt','w')) {fputs($h,clean($message));fclose($h);}
 	}
 }
 /**
 *
-* ADMIN
+* TÂCHES ADMIN
 */
 if($isadmin) {
 	if($deluser) { $forum->removeMember($deluser); }
@@ -1672,11 +1681,11 @@ echo '<link rel="stylesheet" href="css/style_'.$cStyle.'.css" />';
 <?php
 if(preg_match('/.gif$|.jpg$|.png$/i',$uforum) && file_exists($uforum)) {
 	$tmp='<a href="index.php" title="'.htmlspecialchars($siteName, ENT_QUOTES).'"><img src="'.$uforum.'" alt="'.htmlspecialchars($siteName, ENT_QUOTES).'" /></a>';
-	echo '<title>'.htmlspecialchars($siteName, ENT_QUOTES).'</title>';
+	echo '<title>'.$siteName.'</title>';
 } else {
 	$tmp=decode($uforum);
 	$bbcodes=array('[b]','[/b]','[i]','[/i]','[u]','[/u]','[e]','[/e]','[hr]');
-	echo '<title>'.stripslashes(str_replace($bbcodes,'',$uforum)).'</title>';
+	echo '<title>'.str_replace($bbcodes,'',$uforum).'</title>';
 }
 
 echo '</head>';
