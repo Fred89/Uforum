@@ -1,10 +1,33 @@
 <?php
-define('Uforum',true);
+# ------------------ BEGIN LICENSE BLOCK ------------------
+#
+# This file is part of µForum : http://uforum.byethost5.com/
+# @update   28-11-2012
+# Copyright (c) 2012 Frédéric Kaplon and contributors
+# Copyright (c) 2008 ~ Okkin  Avetenebrae
+# Licensed under the GPL license.
+# See http://www.gnu.org/licenses/gpl.html
+#
+# ------------------- END LICENSE BLOCK -------------------
 error_reporting(E_ALL);
+/**
+*
+* Déclaration des répertoires
+*/
+define('U_DATA', 'data/');
+define('U_THREAD', U_DATA.'messages/');
+define('U_MEMBER', U_DATA.'membres/');
 /*
 ** Version de µForum
 */
-$version = '0.7';
+$version = '0.9';
+/**
+*
+* Vérification de la version de php
+*/
+if (version_compare(PHP_VERSION, '5.3', '<')) {
+    die('Vous devez disposer d\'un serveur équipé de PHP 5.3 ou plus !');
+}
 /**
 *
 * light dark link contrast back border
@@ -41,7 +64,7 @@ class SaveObj
 */
 class Forum extends SaveObj
 {
-	var $name='membres/members.dat';
+	var $name='data/membres/members.dat';
 	var $topics=array();
 	var $members=array();
 	function forum() { // Construteur de la classe
@@ -142,7 +165,7 @@ class Forum extends SaveObj
 		return array(count($this->members),$arr[1],count($this->topics),$tmp);
 	}
 	function openTopic($topic) {
-		if($s = @file_get_contents('messages/'.$topic.'.dat')) return unserialize($s);
+		if($s = @file_get_contents(U_THREAD.$topic.'.dat')) return unserialize($s);
 		else return false;
 	}
 	function lastSort() {
@@ -189,7 +212,7 @@ class Topic extends SaveObj
 		$this->title=clean($title);
 		$this->time=time();
 		$this->type=$type;
-		$this->name='messages/'.time().'.dat';
+		$this->name=U_THREAD.time().'.dat';
 		$this->saveObj();
 	}
 	function removeTopic() {
@@ -251,7 +274,7 @@ class Topic extends SaveObj
 */
 class Visit extends saveObj
 {
-	var $name='membres/connected.dat';
+	var $name='data/membres/connected.dat';
 	var $conn=array();
 	function visit($id='') {
 		$this->conn[$_SERVER['REMOTE_ADDR']]=array($id,time());
@@ -275,14 +298,14 @@ class Visit extends saveObj
 }
 /**
 *
-* INSCRIPTION DES MESSAGES MEMBRES
+* INSCRIPTION DES MESSAGES PRIVÉS DES MEMBRES
 */
 class Messages extends saveObj
 {
 	var $mess=array();
 	var $name;
 	function messages($name) {
-		$this->name='membres/'.$name.'/'.$name.'.mp';
+		$this->name=U_MEMBER.$name.'/'.$name.'.mp';
 	}
 	function addMessage($from,$content) {
 		$this->mess[]=array(time(),$from,$content);
@@ -294,13 +317,21 @@ class Messages extends saveObj
 }
 /**
 *
+* RETOURNE L'URL
+*/
+function baseURL()
+{
+	$dir = dirname($_SERVER['SCRIPT_NAME']);
+	return 'http://' .$_SERVER['SERVER_NAME'].$dir.($dir === '/'? '' : '/');
+}
+/**
+*
 * INITIALISATION
 */
 function init_forum() {
 	global $error,$version, $forum, $conn;
 	if(@file_get_contents('version')!=$version) {
-		$d = (strlen(dirname($_SERVER['SCRIPT_NAME']))>1)?dirname($_SERVER['SCRIPT_NAME']).'/':'';
-		$d = 'http://'.$_SERVER['HTTP_HOST'].$d;
+		$d = baseURL();
 		if($h=@fopen('version','w')) { fputs($h,$version); fclose($h); }
 		if(!mkressources($d)) {
 			@include('config.php');
@@ -308,6 +339,7 @@ function init_forum() {
 			if($h=@fopen('config.php','w')) {fputs($h,utf8_encode($config));fclose($h);}
 		}
 		mkhtaccess();
+		mklang();
 		if(@copy('index.php','index.bak')) {
 			unlink('index.php');
 			rename('index.bak','index.php');
@@ -315,9 +347,9 @@ function init_forum() {
 			exit();
 		}
 	} else {
-		$s = @file_get_contents('membres/members.dat');
+		$s = @file_get_contents(U_MEMBER.'members.dat');
 		$forum = unserialize($s);
-		$s = @file_get_contents('membres/connected.dat');
+		$s = @file_get_contents(U_MEMBER.'connected.dat');
 		$conn = unserialize($s);
 	}
 }
@@ -327,19 +359,31 @@ function init_forum() {
 */
 function mkressources($d) {
 	global $error,$forum,$conn;
-	if (!file_exists('membres/') || !file_exists('membres/members.dat')) {
-		$config="<?\$uforum='[b]&micro;[/b]Forum';\$lang='francais';\$nbrMsgIndex=15;\$extensionsAutorises='gif,bmp,png,jpg,mp3,zip,rar,txt';\$maxAvatarSize=30720;\$forumMode=1;\$quoteMode=1;\$siteUrl='';\$siteName='';\$siteBase='$d';?>";
+	if (!file_exists(U_MEMBER) || !file_exists(U_MEMBER.'members.dat')) {
+		$config="<?\$uforum='[b]&micro;[/b]Forum';\$lang='fr';\$nbrMsgIndex=15;\$extensionsAutorises='gif,bmp,png,jpg,mp3,zip,rar,txt';\$maxAvatarSize=30720;\$forumMode=1;\$quoteMode=1;\$siteUrl='';\$siteName='';\$siteBase='$d';?>";
 		if($h=@fopen('config.php','w')) {fputs($h,utf8_encode($config));fclose($h);}
-		$error=(@mkdir('membres/'))?'Création du répertoire membre.<br />':'Echec à la création du répertoire membre !<br />';
-		$error.=(@mkdir('messages/'))?'Création du répertoire messages.<br />':'Echec à la création du répertoire messages !<br />';
-		$error.=(@mkdir('upload/'))?'Création du répertoire upload.<br />':'Echec à la création du répertoire upload !<br />';
-		$error.=(mkimg())?'Installation des images réussie.<br />':'Echec à l\'installation des images !<br />';
+
+        $error= (@mkdir('lang/'))?'&#10004; Création du répertoire lang.<br>' : '&#10008; Echec à la création du répertoire lang<br>';
+		$error.= (@mkdir('data/'))?'&#10004; Création du répertoire data.<br>' : '&#10008; Echec à la création du répertoire data<br>';
+		$error.= (@mkdir(U_MEMBER))?'&#10004; Création du répertoire membres.<br>' : '&#10008; Echec à la création du répertoire membres<br>';
+		$error.= (@mkdir(U_THREAD))?'&#10004; Création du répertoire messages.<br>' : '&#10008; Echec à la création du répertoire messages<br>';
+		$error.= (mkimg())?'&#10004; Installation des images réussie.<br>' : '&#10008; Echec à l\'installation des images<br>';
 		mkcss();
 		$forum = new Forum();
 		$conn = new Visit();
 		return true;
 	}
 	return false;
+}
+/**
+*
+* CRÉATION DU FICHIER LANG
+*/
+function mklang() {
+	$fr = 'PD9waHANCg0KJGxhbmdbJ3JlZ2lzdGVyJ10gPSAnQ3LDqWVyIHVuIGNvbXB0ZSc7DQokbGFuZ1sncG9zdCddID0gJ0FydGljbGUnOw0KJGxhbmdbJ3JlcGx5J10gPSAnQ29tbWVudGFpcmUnOw0KJGxhbmdbJ3BsdWdpbiddID0gJ1BsdWdpbic7DQokbGFuZ1snbW9yZSddID0gJ0VuIGxpcmUgcGx1cy4uLic7DQokbGFuZ1snY29uZmlnJ10gPSAnQ29uZmlndXJhdGlvbic7DQokbGFuZ1snbG9nb3V0J10gPSAnRMOpY29ubmV4aW9uJzsNCiRsYW5nWydsb2dpbiddID0gJ0Nvbm5leGlvbic7DQokbGFuZ1sncmVkaXJlY3QnXSA9ICdSZWRpcmVjdGlvbiB2ZXJzJzsNCiRsYW5nWydhZGQnXSA9ICdBam91dGVyJzsNCiRsYW5nWydlZGl0J10gPSAnRWRpdGVyJzsNCiRsYW5nWydkZWxldGUnXSA9ICdTdXBwcmltZXInOw0KJGxhbmdbJ3RpdGxlJ10gPSAnVGl0cmUnOw0KJGxhbmdbJ2NvbnRlbnQnXSA9ICdNZXNzYWdlJzsNCiRsYW5nWyduYW1lJ10gPSAnTm9tJzsNCiRsYW5nWyd0cmlwJ10gPSAnTGFpc3NlciB2aWRlIHNpIEFub255bWUnOw0KJGxhbmdbJ3ZpZXcnXSA9ICdBZmZpY2hhZ2UnOw0KJGxhbmdbJ3NlYXJjaCddID0gJ1JlY2hlcmNoZSc7DQokbGFuZ1snbGluayddID0gJ0xpZW4nOw0KJGxhbmdbJ2NhdGVnb3J5J10gPSAnQ2F0w6lnb3JpZSc7DQokbGFuZ1snYXJjaGl2ZSddID0gJ0FyY2hpdmUnOw0KJGxhbmdbJ3VybCddID0gJ1VSTCc7DQokbGFuZ1sncGFzc3dvcmQnXSA9ICdNb3QgZGUgUGFzc2UnOw0KJGxhbmdbJ3Bvd2VyZWRCeSddID0gJ1Byb3B1bHPDqSBwYXIgPGEgaWQ9ImJvdHRvbSIgbmFtZT0iYm90dG9tIiBocmVmPSJodHRwOi8vdWZvcnVtLmJ5ZXRob3N0NS5jb20iIHJlbD0idG9vbHRpcCIgdGl0bGU9IkZvcnVtIHNhbnMgU3FsIj7CtUZvcnVtPC9hPic7DQokbGFuZ1snZmVlZCddID0gJ0ZpbCByc3MnOw0KJGxhbmdbJ3RoZW1lJ10gPSAnVGjDqG1lJzsNCiRsYW5nWydsYW5nJ10gPSAnTGFuZ3VhZ2UnOw0KJGxhbmdbJ25vbmUnXSA9ICdBdWN1bmUgZG9ubsOpZSBhY3R1ZWxsZW1lbnQnOw0KJGxhbmdbJ2NvbmZpcm0nXSA9ICdPayc7DQokbGFuZ1sndW5jYXRlZ29yaXplZCddID0gJ05vbiBjYXTDqWdvcmnDqSc7DQokbGFuZ1sneWVzJ10gPSAnT3VpJzsNCiRsYW5nWydubyddID0gJ05vbic7DQokbGFuZ1snbG9ja2VkJ10gPSAnRmVybcOpJzsNCiRsYW5nWydkYXknXSA9ICdKb3VyJzsNCiRsYW5nWydob3VyJ10gPSAnaGV1cmUnOw0KJGxhbmdbJ21pbnV0ZSddID0gJ21pbnV0ZSc7DQokbGFuZ1snc2Vjb25kJ10gPSAnc2Vjb25kZSc7DQokbGFuZ1sncGx1cmFsJ10gPSAncyc7DQokbGFuZ1snYWdvJ10gPSAnYXZhbnQnOw0KJGxhbmdbJ2VyckxlbiddID0gJ2VzdCB0cm9wIGxvbmcgb3UgdHJvcCBjb3VydCc7DQokbGFuZ1snZXJyQm90J10gPSAnQ0FQVENIQSBpbmNvcnJlY3RlJzsNCiRsYW5nWydyZXBsaWVkJ10gPSAncsOpcG9uZHVzIMOgJzsNCiRsYW5nWydub3RGb3VuZCddID0gJ09vcHMhIENldHRlIHBhZ2UgblwnZXhpc3RlIHBsdXMgOignOw0KJGxhbmdbJ2Vyck5vdE1hdGNoJ10gPSAnTGVzIG1vdHMgZGUgcGFzc2UgbmUgY29ycmVzcG9uZGVudCBwYXMnOw0KDQo/Pg==';
+	if(!file_exists('lang/fr.lng.php')) {
+		if($h=@fopen('lang/fr.lng.php','w')) { fputs($h,base64_decode($fr));fclose($h); }
+	}
 }
 /**
 *
@@ -362,14 +406,16 @@ function mkcss() {
 */
 function mkhtaccess() {
 	$s = $_SERVER['SCRIPT_NAME'];
-	#$mainHt = "<FilesMatch \"^index.php$\">\n";
-	#$mainHt .= "ForceType application/x-httpd-php\n";
-	#$mainHt .= "</FilesMatch>\n";
-	$mainHt =  "ErrorDocument 401 $s\n";
-	$mainHt .= "ErrorDocument 403 $s\n";
-	$mainHt .= "ErrorDocument 404 $s\n";
-	if(!file_exists('.htaccess')) {
-		if($h=@fopen('.htaccess','w')) { fputs($h,$mainHt);fclose($h); }
+	$mainHt = "<Files *.dat>\n";
+	$mainHt .= "order allow,deny\n";
+	$mainHt .= "deny from all\n";
+	$mainHt .= "</Files>\n";
+	#$mainHt =  "ErrorDocument 401 $s\n";
+	#$mainHt .= "ErrorDocument 403 $s\n";
+	#$mainHt .= "ErrorDocument 404 $s\n";
+	$mainHt .= "options -indexes \n";
+	if(!file_exists('data/.htaccess')) {
+		if($h=@fopen('data/.htaccess','w')) { fputs($h,$mainHt);fclose($h); }
 	}
 }
 /**
@@ -419,34 +465,21 @@ function img($nr, $class='') { global $img_names; return  '<img src="img/'.$img_
 # function callback($buffer) { return htmlentities($buffer,ENT_NOQUOTES,"UTF-8"); }
 /**
 *
-* FORMULAIRE DE CONNEXION/INSCRIPTION
+* FORMULAIRE D'INSCRIPTION
 */
-function loginForm() {
+function registerForm() {
 	global $maxAvatarSize,$forum,$forumMode;
 
-	$form ='<br />
-<div class="tabbable"> <!-- Only required for left/right tabs -->
-  <ul class="nav nav-tabs">
-    <li class="active"><a href="#login" data-toggle="tab">Connexion</a></li>
-    <li><a href="#register" data-toggle="tab">Inscription</a></li>
-  </ul>
-  <div class="tab-content">';
-  
-    ////////// CONNEXION
-    $form .= '<div class="tab-pane active" id="login">
-         <form action="index.php" method="post" class="form-inline pull-right">          
-              <input type="hidden" name="action" value="enter" />
-              <input class="span2" type="text" name="login" placeholder="Identifiant">&nbsp;
-            <div class="input-append">
-              <input class="span2" type="password" name="password" placeholder="Mot de passe">
-              <button class="btn btn btn-info" type="submit"><i class="icon-ok-sign icon-white"></i> Ok</button>
-            </div>
-        </form>
-    </div>';
+	$form ='<br /><a class="btn btn-warning" href="#register" data-toggle="collapse" data-target="#register"><i class="icon-user icon-white"></i> Créer un compte <span class="caret"></span></a>';
     
     ///////// INSCRIPTION
-    $form .= '<div class="tab-pane" id="register">
-<form action="index.php" method="post" enctype="multipart/form-data" class="form-horizontal" onsubmit="return checkform(this);">
+	$form .='<!-- Modal -->
+<div class="collapse" id="register">
+  <div class="page-header">
+    <h3>Nouvelle Inscription</h3>
+  </div>
+  
+ <form action="index.php" method="post" enctype="multipart/form-data" class="form-horizontal" onsubmit="return checkform(this);">
   <input type="hidden" name="action" value="newuser" />
   <input type="hidden" name="MAX_FILE_SIZE" value=".$maxAvatarSize." />
   
@@ -498,33 +531,29 @@ function loginForm() {
   <div class="control-group">
     <label class="control-label" for="site">Signature</label>
     <div class="controls">
-      <textarea class="input-xxlarge" rows="2" id="signature" name="signature" maxlength="150"></textarea>
+      <textarea class="input-xxlarge" rows="2" id="signature" name="signature" maxlength="150" placeholder="Aucune mise en forme possible et limité a 150 caractères"></textarea>
     </div>
   </div>
   <div class="control-group">
-    <label class="control-label" for="site">Avatar (&lt;'.($maxAvatarSize/1024).'ko)</label>
+    <label class="control-label" for="site">Avatar <span class="badge badge-warning">&lt; '.($maxAvatarSize/1024).'ko</span></label>
     <div class="controls">
       <input type="file" id="avatar" name="avatar">
-      <span class="help-inline">Les champs marqu&eacute;s de * sont obligatoires. Si l\'identifiant comporte / \ &amp; \" \' . ou des espaces, ils seront retir&eacute;s.</span>
+      <span class="help-inline alert alert-info"><i class="icon-exclamation-sign"></i> Les champs de couleur verte sont obligatoires. Si l\'identifiant comporte / \ &amp; \" \' . ou des espaces, ils seront retirés.</span>
     </div>
   </div>
   <div class="control-group success">
     <label class="control-label" for="code">Code de vérification</label>
     <div class="controls">
-     <div class="input-prepend">
+     <div class="input-prepend input-append">
        <p class="add-on"><span id="txtCaptchaDiv" class="text-success"></span></p>
        <input type="hidden" id="txtCaptcha" />
        <input class="span2" type="text" name="txtInput" id="txtInput">
+       <button type="submit" class="btn btn-success"><i class="icon-hand-right icon-white"></i> S\'inscrire</button>
      </div>
+    </div>     
   </div>    
-  <div class="form-actions">
-     <button type="submit" class="btn btn-primary">Valider</button>
-  </div>
 </form>
-    </div>
-  </div>
-</div>';
-	
+ </div>';
 	return $form;
 }
 /**
@@ -544,7 +573,7 @@ function welcomeText() {
 }
 /**
 *
-* ÉDITION DU PROFILE
+* ÉDITION DU PROFIL
 */
 function editProfilForm() {
 	global $cLogin,$maxAvatarSize,$forum;
@@ -553,7 +582,7 @@ function editProfilForm() {
 	
 	$form = '<!-- Edit profil form -->';
 	$form .= '<div class="page-header">
-            <h1>Editer son profil ~ '.$cLogin.'</h1>
+            <h1>Édition du profil ~ '.$cLogin.'</h1>
           </div>';
 	$form .= '
   <div class="container-narrow">	
@@ -594,11 +623,11 @@ function editProfilForm() {
   <div class="control-group">
     <label class="control-label" for="signature">Signature</label>
     <div class="controls">
-      <textarea class="input-xxlarge" rows="2" id="signature" name="signature" maxlength="150">'.$signature.'</textarea>
+      <textarea class="input-xxlarge" rows="2" id="signature" name="signature" maxlength="150" placeholder="Aucune mise en forme possible et limité a 150 caractères">'.$signature.'</textarea>
     </div>
   </div>  
   <div class="control-group">
-    <label class="control-label" for="site">Avatar (&lt;'.($maxAvatarSize/1024).'ko)</label>
+    <label class="control-label" for="site">Avatar <span class="badge badge-warning">&lt; '.($maxAvatarSize/1024).'ko</span></label>
     <div class="controls">
       <input type="file" id="avatar" name="avatar">
     </div>
@@ -618,13 +647,15 @@ function editProfilForm() {
 */
 function formattingHelp() {
 	$buff = '';
+	$smileys='';
 	$s=array(':)',';)',':D',':|',':(','8(',':p',':$','->'); // smileys
-	for($i=0;$i<sizeof($s);$i++) { $smileys .= "<li><a href=\"javascript:insert(' ".$s[$i]." ','');\" title='smileys'>".img($i)."</a></li>"; }
+	for($i=0;$i<sizeof($s);$i++) { $smileys .= "<li><a href=\"javascript:insert(' ".$s[$i]." ','');\" title='".$s[$i]."'>".img($i)."</a></li>"; }
 	$buff .= '<div class="control-group">
    <label class="control-label">Formattage</label>
    <div class="controls">
    <div class="btn-toolbar">
-    <div class="btn-group">
+                  
+    <div class="btn-group">           
        <a class="btn" href="javascript:insert(\'[b]\',\'[/b]\')" rel="tooltip" title="Gras"><i class="icon-bold"></i></a>
        <a class="btn" href="javascript:insert(\'[i]\',\'[/i]\')" rel="tooltip" title="Italique"><i class="icon-italic"></i></a>
        <a class="btn" href="javascript:insert(\'[u]\',\'[/u]\')" rel="tooltip" title="Souligné"><i class="icon-text-width"></i></a>
@@ -634,9 +665,13 @@ function formattingHelp() {
        <a class="btn" href="javascript:insert(\'[url]\',\'[/url]\')" rel="tooltip" title="Inséré un lien"><i class="icon-share"></i></a>
        <a class="btn" href="javascript:insert(\'[img]\',\'[/img]\')" rel="tooltip" title="Inséré une image"><i class="icon-picture"></i></a>
        <a class="btn" href="javascript:insert(\'[youtube]\',\'[/youtube]\')" rel="tooltip" title="Youtube"><i class="icon-film"></i></a>
+    </div><!-- /btn-group --> 
+    
+    <div class="btn-group">
        <a class="btn dropdown-toggle" data-toggle="dropdown" rel="tooltip" title="Smileys">&#9787; <span class="caret"></span></a>
-       <ul class="dropdown-menu">'.$smileys.'</ul>
-    </div> 
+          <ul class="dropdown-menu">'.$smileys.'</ul>
+    </div>
+        
    </div>       
   </div>
 </div>';
@@ -650,7 +685,7 @@ function breadcrumbs() {
 	global $cLogin,$isadmin,$havemp,$cStyle,$cVals,$forum,$nbrMsgIndex,$ismember,$siteUrl,$siteName;
 	$mn='';	
 	$tLogin=$ismember?$cLogin:'Invité';
-	$mn .= '<ul class="breadcrumb"><li>Bienvenue <span class="';
+	$mn .= '<ul class="breadcrumb"><li><i class="icon-play-circle"></i> Bienvenue <span class="';	
 	$mn .= ($isadmin)?'text-error':'text-info';
 	$mn .= '"><strong>'.$tLogin.'</strong></span>';	
 	if($havemp) $mn .= ' <a href="#privatebox" rel="tooltip" title="Nouveau Message Privé" role="button" class="blink" data-toggle="modal"> <i class="icon-inbox"></i></a><script>function blink(selector){$(selector).fadeOut("slow", function(){$(this).fadeIn("slow", function(){blink(this);});});}blink(".blink");</script>';
@@ -664,18 +699,24 @@ function breadcrumbs() {
 */
 function menu() {
 	global $cLogin,$havemp,$cStyle,$cVals,$forum,$nbrMsgIndex,$ismember,$siteUrl,$siteName;
-	$mn='';
-	$p = '<li><a href="';
-  
-	if($siteUrl!='') $mn .= $p.$siteUrl.'" title="'.$siteName.'">'.$siteName.'</a>';
-	$mn .= $p.'index.php" title="Retour a l\'accueil">Accueil</a></li><li class="divider-vertical"></li>';
-	if($ismember) {
-		$mn .= $p.'?logout=1" title="Quitter la session">Déconnexion</a></li><li class="divider-vertical"></li>';
-		$mn .= $p.'?editprofil=1" title="Editer mon profil">Profil</a></li><li class="divider-vertical"></li>';
-	}
+	$mn='<ul class="nav">'; 	 
+	if($siteUrl!='') $mn .='<li><a href="'.$siteUrl.'" title="'.$siteName.'"><i class="icon-home"></i> '.$siteName.'</a></li><li class="divider-vertical"></li>';
 	$stats=$forum->getStat();
-	if($nbrMsgIndex<$stats[2]) $mn .= $p.'?showall=1" title="">Archives</a></li><li class="divider-vertical"></li>';
-	if($ismember) $mn .= $p.'?memberlist=1" title="Afficher la liste des membres">Membres</a></li><li class="divider-vertical"></li>';
+	if($nbrMsgIndex<$stats[2]) $mn .='<li><a href="?showall=1" title=""><i class="icon-bookmark"></i> Archives</a></li><li class="divider-vertical"></li>';	
+	if($ismember) {
+		$mn .='<li><a href="?logout=1" title="Quitter la session"><i class="icon-off"></i> Déconnexion</a></li><li class="divider-vertical"></li>';
+		$mn .='<li><a href="?editprofil=1" title="Editer mon profil"><i class="icon-eye-open"></i> Profil</a></li><li class="divider-vertical"></li>';
+		$mn .='<li><a href="?memberlist=1" title="Afficher la liste des membres"><i class="icon-user"></i> Membres</a></li><li class="divider-vertical"></li>
+		       </ul>';
+	} else {
+		$mn .='</ul>
+		    <form action="index.php" method="post" class="navbar-form pull-right">
+		        <input type="hidden" name="action" value="enter" />
+                <input class="span2" type="text" name="login" placeholder="Identifiant">
+                <input class="span2" type="password" name="password" placeholder="Password">
+                <button type="submit" class="btn btn btn-info"><i class="icon-ok icon-white"></i> S\'identifier</button>
+            </form>';		
+	}	
 	return $mn;
 }
 /**
@@ -685,18 +726,17 @@ function menu() {
 function menu_admin() {
 	global $isadmin,$isowner;
 	$mn='';
-	$p = '<li><a href="';
 	if($isadmin && $isowner) {
 		$mn .= '<ul class="nav pull-right">
                       <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Tab. de Bord <b class="caret"></b></a>
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown"><i class="icon-cog"></i> Tab. de Bord <b class="caret"></b></a>
                         <ul class="dropdown-menu">';
-		$mn .= $p.'?conf=1" title="Paramètre Général">Configuration</a></li>';
-		$mn .= $p.'?backup=1" title="Créer une sauvegarde">Sauvegarde</a></li>';
-		$mn .= $p.'?restore=1" title="Restaurer depuis une sauvegarde">Restauration</a></li>';
-		$mn .= 	'</ul>
+		$mn .= '<li><a href="?conf=1" title="Paramètre Général"><i class="icon-wrench"></i> Configuration</a></li>';
+		$mn .= '<li><a href="?backup=1" title="Créer une sauvegarde"><i class="icon-hdd"></i> Sauvegarde</a></li>';
+		$mn .= '<li><a href="?restore=1" title="Restaurer depuis une sauvegarde"><i class="icon-refresh"></i> Restauration</a></li>';
+		$mn .= '        </ul>
                       </li>
-                    </ul>';
+                </ul>';
 	}
 	return $mn;
 }
@@ -706,7 +746,7 @@ function menu_admin() {
 */
 function showTopics() {
 	global $isadmin,$nbrMsgIndex,$forum,$showall;
-
+    $buffer='';
 	$buffer .= '<table class="table table-bordered table-hover table-condensed">
 	             <tr class="info">
 	                 <td style="width:60%;"Titre du sujet</td>
@@ -720,16 +760,16 @@ function showTopics() {
 		list($titre,$auteur,$nombrePosts,$dernierPar,$dernierLe,$attachment,$postType,$topicID)=$t;
 		$dernierLe = date("d M Y à H:i",$dernierLe);
 		$started = date("d M Y", $topicID);
-		$attachment=($attachment!='')?'<i class="icon-file" rel="tooltip" title="Contient des pièces jointes"></i> ':'';
-		$postType=$postType?'<i class="icon-star" rel="tooltip" title="Discussion importante"></i> ':'';
-		$statusIcon = (isset($_COOKIE['uFread'.$topicID]))?'<i class="icon-folder-open" rel="tooltip" title="Lu"></i>':'<i class="icon-folder-close" rel="tooltip" title="Non lu"></i>';
+		$attachment=($attachment!='')?'<i class="icon-file"></i> ':'';
+		$postType=$postType?'<i class="icon-star"></i> ':'';
+		$statusIcon = (isset($_COOKIE['uFread'.$topicID]))?'<i class="icon-folder-open"></i>':'<i class="icon-folder-close"></i>';
 		$buffer .= '<tr>
 		              <td>'.$postType.$attachment.$statusIcon.' <a href="?topic='.$topicID.'" title="afficher le sujet">'.$titre.'</a><br />
-		                <span style="float:right; margin-right:5px; font-size:81.25%;">D&eacute;but&eacute; le '.$started.', Par ';
-		$buffer .= $forum->isMember($auteur)?'<a class="Lien" href="index.php?private='.$auteur.'" title="message privé">'.$auteur.'</a></span></td>':$auteur.'</span></td>';
+		                <small class="pull-right muted">Débuté le '.$started.', Par ';
+		$buffer .= $forum->isMember($auteur)?'<a href="index.php?private='.$auteur.'" rel="tooltip" title="Envoyer un message privé">'.$auteur.'</a></span></td>':$auteur.'</small></td>';
 		$buffer .= '<td class="mess">'.$nombrePosts.'</td>
-		              <td><em>Le :</em> <a href="?topic='.$topicID.'#bottom" title="dernier message">'.$dernierLe.'</a><br /><em>Par:</em> ';
-		$buffer .= $forum->isMember($dernierPar)?'<a href="index.php?private='.$dernierPar.'" title="message privé">'.$dernierPar.'</a></td>':$dernierPar.'</td>';
+		              <td><em>Le :</em> <a href="?topic='.$topicID.'#bottom" rel="tooltip" title="Aller au dernier message">'.$dernierLe.'</a><br /><em>Par:</em> ';
+		$buffer .= $forum->isMember($dernierPar)?'<a href="index.php?private='.$dernierPar.'" rel="tooltip" title="Envoyer un message privé">'.$dernierPar.'</a></td>':$dernierPar.'</td>';
 		if($isadmin) $buffer .= "<td><a href='?topic=".$topicID."&amp;delpost=".$topicID."' onclick='return confirmLink(this,\"$titre\")' rel='tooltip' title='Supprimer le sujet ?'><i class='icon-trash'></i></a></td>\n";
 		$buffer .= '</tr>';
 	}
@@ -750,7 +790,7 @@ function showPosts() {
 	$avatars=array();
 	$quotes=array();
 	$modo=array();
-	if($s = implode('', file('messages/'.$topic.'.dat'))) {
+	if($s = implode('', file(U_THREAD.$topic.'.dat'))) {
 		$topicObj = unserialize($s);
 		list($time,$titre,$auteur,$posts,$last,$lasttime,$attach,$type)=$topicObj->getInfo(0);
 		$buffer .= '<div class="input-prepend input-append">';
@@ -766,22 +806,35 @@ function showPosts() {
 		foreach($auths as $m) {
 			if($forum->isMember($m)) {
 				list($password,$time,$mail,$quote,$url,$birthday,$pic,$mod,$max)=$forum->getMember($m);
-				$buffer .= '<div class="tooltip" id="'.$m.'">';
-				$buffer .= '<table class="table">';
-				$buffer .= '<tr><td class="formTD"><b>'.$m.'</b></td><td class="tooltipTD">'.$max.' messages depuis le '.date('d M Y à H:i',$time).'</td></tr>';
-				$buffer .= '<tr><td class="formTD">eMail</td><td class="tooltipTD">'.$mail.'</td></tr>';
-				if(!empty($url)) $buffer .= '<tr><td class="formTD">Site Web</td><td class="tooltipTD">'.$url.'</td></tr>';
-				$buffer .= '<tr><td class="formTD">Date d\'anniversaire</td><td class="tooltipTD">'.$birthday.'</td></tr>';
-				if(!empty($quote)) {
-					$buffer .= '<tr><td class="formTD">Signature</td><td class="tooltipTD">'.$quote.'</td></tr>';
-					if($quoteMode) $quotes[$m]=$quote;
-				}
-				$buffer .= '</table></div>';
+				// Déclaration de l'avatar ou défaut avatar
+				$avatars[$m]=($pic!='')?'<img class="avatar" src="'.$pic.'" alt="avatar"/>':img(11,'img-circle');
+				$buffer .= '<!-- Modal -->
+<div id="show_'.$m.'" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="show_'.$m.'" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3>Profil de <b>'.$m.'</b></h3>
+  </div>
+  <div class="modal-body">
+    <p class="pull-right"><span class="thumbnail">'.$avatars[$m].'</span></p>
+    <p><b>Inscrit(e) le:</b> '.date('d M Y à H:i',$time).'</p>
+    <p><b>Messages:</b> '.$max.'</p>
+    <p><b>Mail:</b> '.protect_email($mail).'</p>';
+	if(!empty($url)) $buffer .= '<p><b>Site Web:</b> '.$url.'</p>';
+	if(!empty($birthday)) $buffer .= '<p><b>Né le:</b> '.$birthday.' <span class="badge">'.birthday($birthday, $pattern = 'eu').' ans</span></p>';
+	if(!empty($quote)) {
+		$buffer .= '<p><b>Signature:</b> <br><blockquote>'.$quote.'</blockquote></p>';
+		if($quoteMode) $quotes[$m]=$quote;
+	}  
+$buffer .= '				  
+  </div>
+  <div class="modal-footer">
+    <a class="btn btn-primary" href="?private='.$m.'">Envoyer un message privé</a>
+    <button class="btn" data-dismiss="modal" aria-hidden="true">Fermer</button>
+  </div>
+</div>';
 				if($mod) $modo[$m]=($mod>1)?'<span class="label label-important">Fondateur</span>':'<span class="label label-success">Modérateur</span>';
 				else $modo[$m]='<span class="label">Membre</span>';
 			} else $pic='';
-			// Avatar
-			$avatars[$m]=($pic!='')?'<img class="avatar" src="'.$pic.'" alt="avatar"/>':img(11,'img-circle');
 		}
 		$cnt=0;
 		while(list($auth,$time,$content,$attach)=$topicObj->nextReply()) {
@@ -792,7 +845,7 @@ function showPosts() {
             <ul class="nav nav-list">
                <li class="nav-header"><a href="?private='.$auth.'" rel="tooltip" title="Envoyer un message privé">'.$auth.'</a></li>				
                <li class="span1">
-                <a class="thumbnail" onmouseover=\"showWMTT("'.$auth.'")\" onmouseout=\"hideWMTT()\" href="?private='.$auth.'" title="">
+                <a class="thumbnail" href="#show_'.$auth.'" role="button" data-toggle="modal" rel="tooltip" title="Afficher le profil">
                   '.$avatars[$auth].'
                 </a>
                </li>
@@ -821,16 +874,18 @@ function showPosts() {
 				$buffer .= "<a class='btn btn-mini btn-inverse' href='?topic=$topic&amp;editpost=$time' rel='tooltip' title='Éditer'><i class='icon-pencil icon-white'></i></a><a class='btn btn-mini btn-inverse' href='?topic=$topic&amp;delpost=$time' rel='tooltip' title='Supprimer' onclick='return confirmLink(this,\"$delmsg\")'><i class='icon-remove icon-white'></i></a>\n";
 			}
 			// Citation
-            $buffer .= '<a class="btn btn-mini" href="'.$_SERVER['REQUEST_URI'].'#bottom" onclick="quote("'.$auth.'",'.$cnt.')" rel="tooltip" title="citer le message de '.$auth.'" /><i class="icon-comment"></i> Citer</a></div></li>
+            $buffer .= '<a class="btn btn-mini" href="'.baseURL().'#bottom" onclick="quote("'.$auth.'",'.$cnt.')" rel="tooltip" title="citer le message de '.$auth.'" /><i class="icon-comment"></i> Citer</a></div></li>
 			<li class="divider"></li>
 			<li class="muted">'.date('d/m/y à H:i', $time).'</li>
 			    </ul>
 			</td>';
+			// Message
 			$buffer .= '<td class="span9" id="td'.$cnt.'">'.decode($content).'<div class="clearfix"></div>';
 			if(!empty($attach)){
 				$attachment = explode('/', $attach);
 				$buffer .= '<p class="pull-right"><a href="?pid='.base64_encode($attach).'" rel="tooltip" title="Télécharger"><i class="icon-file"></i> '.$attachment[2].'</a></p>';
-			}									
+			}
+			// Citation									
 			if(isset($quotes[$auth])) $buffer .= '<hr /><blockquote class="text-info"><p>'.$quotes[$auth].'</p></blockquote>';			
 			$buffer .= '</td></tr>';
 			$buffer .= '</table>';
@@ -907,7 +962,7 @@ function bbCode($text, $summary = true)
 	$replace[] = '<a target="_blank" href="$1">$1</a>';	
 
 	$pattern[] = '%\[youtube\]([-\w]{11})\[/youtube\]%';
-	$replace[] = '<iframe width="560" height="315" src="http://www.youtube.com/embed/$1?rel=0" frameborder="0"></iframe>';
+	$replace[] = '<iframe class="thumbnail" width="560" height="315" src="http://www.youtube.com/embed/$1?rel=0" frameborder="0"></iframe>';
 
 	$pattern[] = '%\[quote\](\d{4}-\d{2}-\d{8}[a-z\d]{5})\[/quote\]%e';
 	$replace[] = '<blockquote>$1</blockquote>';
@@ -991,6 +1046,22 @@ function clean($text)
 	if(get_magic_quotes_gpc())
 		$text = stripslashes($text);
 	return htmlspecialchars(trim($text), ENT_QUOTES);
+}
+/**
+ * Méthode qui retourne l'âge i18n
+ *
+**/
+function birthday($birthdate, $pattern = 'eu'){
+    $patterns = array(
+        'eu'    => 'd/m/Y',
+        'mysql' => 'Y-m-d',
+        'us'    => 'm/d/Y',
+    );
+
+    $now      = new DateTime();
+    $in       = DateTime::createFromFormat($patterns[$pattern], $birthdate);
+    $interval = $now->diff($in);
+    return $interval->y;
 }	
 /**
 *
@@ -998,8 +1069,7 @@ function clean($text)
 */
 function showMemberlist() {
 	global $isadmin,$cLogin,$forum;
-
-	$toolTip = '';
+    $annu ='';
 	$wd=$isadmin?45:60;
 	$annu .= '<table class="table table-hover table-condensed"><tr class="warning">
 	              <td style="width:15%;">Membre</td>   
@@ -1012,20 +1082,42 @@ function showMemberlist() {
 	foreach($mb as $m) {
 		list($pass,$time,$mail,$quote,$url,$birthday,$pic,$mod,$post)=$forum->getMember($m);
 		$mail= protect_email($mail);
-		$signature=($quote!='')?tronquer_texte($quote, 50):'&nbsp;';
+		$signature=($quote!='')? '<a href="#" class="muted" rel="popover" title="Signature de '.$m.'" data-content="'.$quote.'">'.tronquer_texte($quote, 50).'</a>':'&nbsp;';
 		if($url!='') {
 			if (!preg_match('|http://|',$url)) $url='http://'.$url;
-			$url='<a href="'.$url.'" rel="tooltip" title="Visiter le site de '.$m.'"><i class="icon-globe"></i></a>';
+			$url='<a href="'.$url.'" rel="tooltip" title="Visiter le site de '.$m.'" target="_blank"><i class="icon-globe"></i></a>';
 		}
 		if($birthday!='') {
 			$birthday = str_replace(' ', '', $birthday);
 			$birthday = preg_replace('/([0-9]{2})+([0-9]{2})+([0-9]{2})+(.*)/i', '\\1 \\2 \\3', $birthday);
 		} else $birthday = '&nbsp;';
 		$avatar=($pic != '')?'<img style="width:80px; height:80px;" src="'.$pic.'" alt="Avatar" />':img(11,'img-circle');
-		$toolTip .= '<div class="tooltip" style="width:80px;" id="'.$m.'">'.$avatar.'</div>';
+		// PopOver
+		$annu .= '<!-- Modal -->
+<div id="show_'.$m.'" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="show_'.$m.'" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <h3>Mini profil de <b>'.$m.'</b></h3>
+  </div>
+  <div class="modal-body">
+    <p class="pull-right"><span class="thumbnail">'.$avatar.'</span></p>
+    <p><b>Inscrit(e) le:</b> '.date('d M Y à H:i',$time).'</p>
+    <p><b>Mail:</b> '.$mail.'</p>';
+	if(!empty($url)) $annu .= '<p><b>Site Web:</b> '.$url.'</p>';
+	if(!empty($birthday)) $annu .= '<p><b>Né le:</b> '.$birthday.' <span class="badge">'.birthday($birthday, $pattern = 'eu').' ans</span></p>';
+	if(!empty($quote)) {
+		$annu .= '<p><b>Signature:</b> <br><blockquote>'.$quote.'</blockquote></p>';
+	}  
+$annu .= '				  
+  </div>
+  <div class="modal-footer">
+    <a class="btn btn-primary" href="?private='.$m.'">Envoyer un message privé</a>
+    <button class="btn" data-dismiss="modal" aria-hidden="true">Fermer</button>
+  </div>
+</div>';
 					
 		$annu .= '<tr>';
-		$annu .= "<td><a href='?private=".$m."' onmouseover=\"showWMTT('".$m."')\" onmouseout=\"hideWMTT()\" rel='tooltip'  title='Envoyer un message privé'>".$m."</a></td>\n";
+		$annu .= '<td><a href="#show_'.$m.'" role="button" data-toggle="modal" rel="tooltip" title="Afficher le profil">'.$m.'</a></td>';
 		$annu .= '<td>'.$signature.'</td>';
 		$annu .= '<td>'.$birthday.'</td>';
 		$annu .= '<td>'.$mail.' '.$url.'</td>';
@@ -1047,7 +1139,6 @@ function showMemberlist() {
 		$annu .= '</tr>';
 	}
 	$annu .= '</table>';
-	$annu .= $toolTip;
 	return $annu;
 }
 /**
@@ -1089,14 +1180,14 @@ function replyForm($type,$mpTo='') {
 	global $topic,$editpost,$topicObj,$cLogin,$isadmin;
 	$edit=0; $join=0; $show=0;
 	if($type=='newtopic') {
-		$name='Nouveau sujet';
+		$name='<i class="icon-plus-sign icon-white"></i> Nouveau sujet';
 		$join=1;
 		$show=$mpTo?0:1;
 	} else if($type=='newpost') {
-		$name="Répondre";
+		$name='<i class="icon-comment icon-white"></i> Répondre';
 		$join=1;
 	} else if($type=='editpost') {
-		if($s = implode('', file('messages/'.$topic.'.dat'))) $topicObj = unserialize($s);
+		if($s = implode('', file(U_THREAD.$topic.'.dat'))) $topicObj = unserialize($s);
 		else return false;
 		list($auth,$time,$content,$attach)=$topicObj->getReply($editpost);
 		$content = preg_replace('/[e](.*)[e]\r\n/i','',$content);
@@ -1172,8 +1263,9 @@ function replyForm($type,$mpTo='') {
 */
 function listFiles() {
 	global $cLogin,$forum;
-	$dir='membres/'.$cLogin.'/';
+	$dir=U_MEMBER.$cLogin.'/';
 	$a=$forum->getMember($cLogin); 
+	$list='';
 	$list.='<a href="#personal_files" role="button" class="btn btn-mini btn-inverse" data-toggle="modal"><i class="icon-file icon-white"></i> Mes Fichiers personnels</a>
 	<!-- Modal -->
 <div id="personal_files" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
@@ -1202,7 +1294,7 @@ function listFiles() {
 function showPrivateMsg() {
 	global $cLogin,$forum;
 	
-	$s=implode('', file('membres/'.$cLogin.'/'.$cLogin.'.mp'));
+	$s=implode('', file(U_MEMBER.$cLogin.'/'.$cLogin.'.mp'));
 	$mp = unserialize($s);
 	$mess=$mp->getMessage();
 	$pvtBox = '<!-- Modal -->
@@ -1287,8 +1379,9 @@ function do_backup($folders,$archive=NULL) {
 function restore_forum($archive='',$folder='') {
 	$rstFolds=0;
 	$rstFiles=0;
+	$folder.='data/';
 	$buffer='';
-	if ($folder) { @mkdir($folder); $folder.='/'; }
+	if ($folder) { @mkdir($folder); }
 	@mkdir($folder.'messages');
 	@mkdir($folder.'membres');
 	
@@ -1356,11 +1449,11 @@ function frestore() {
 * ÉDITION DE LA CONFIGURATION
 */
 function editConf() {
-	global $uforum,$nbrMsgIndex,$extStr,$maxAvatarSize,$wt,$forumMode,$quoteMode,$siteUrl,$siteName;
+	global $uforum,$nbrMsgIndex,$extStr,$maxAvatarSize,$wt,$forumMode,$quoteMode,$siteUrl,$siteName,$lang;
 	
 	$fmode = $forumMode?'checked="checked" ':'';
 	$qmode = $quoteMode?'checked="checked" ':'';
-	if(!$wtp=@file_get_contents('welcome.txt')) $wtp=base64_decode($wt);
+	if(!$wtp=@file_get_contents('welcome.txt')) $wtp=base64_decode(clean($wt));
 	$form = '<!-- Edit config form -->';
 	$form .= '<div class="page-header">
             <h1>Options de configuration</h1>
@@ -1389,6 +1482,12 @@ function editConf() {
     </div>
   </div>
   <div class="control-group">
+    <label class="control-label">Langue</label>
+    <div class="controls">
+      <input type="text" name="uflang" value="'.$lang.'" class="span1" />
+    </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">Poid max. d\'un avatar (ko)</label>
     <div class="controls">
       <input type="text" name="maxav" value="'.($maxAvatarSize/1024).'" class="span1" />
@@ -1397,7 +1496,7 @@ function editConf() {
   <div class="control-group">
     <label class="control-label">Extensions autorisées</label>
     <div class="controls">
-      <input type="text" name="exts" value="'.$extStr.'" />
+      <input type="text" name="exts" value="'.clean($extStr).'" />
     </div>
   </div> 
   <div class="control-group">
@@ -1433,18 +1532,19 @@ function editConf() {
 $error='';
 init_forum();
 
-$siteUrl='http://'.$_SERVER["SERVER_NAME"].str_replace(array("index.php","install.php"),"",$_SERVER['PHP_SELF']); // pour une upgrade,  enlever dans les futurs versions
+$siteUrl=baseURL(); // pour une upgrade,  enlever dans les futurs versions
 require('config.php');
+//require 'lang/' .$lang. '.lng.php';
 $extStr=$extensionsAutorises;
 $extensionsAutorises= '/.'.str_replace(",","$|.",$extensionsAutorises).'$/i';
 /**
 *
 * GET & POST
 */
-$gets=array('topic','action','logout','memberlist','login','password','editprofil','email','birthday','site','signature','titre','message','topicID','postID','deluser','switchuser','delpost','editpost','style','private','delprivate','mpTo','backup','restore','read','conf','uftitle','nbmess','maxav','exts','fmode','anonymous','qmode','postit','ufsite','ufsitename','rc','ntitle','pid');
+$gets=array('topic','action','logout','memberlist','login','password','editprofil','email','birthday','site','signature','titre','message','topicID','postID','deluser','switchuser','delpost','editpost','style','private','delprivate','mpTo','backup','restore','read','conf','uftitle','nbmess','maxav','exts','fmode','anonymous','qmode','postit','ufsite','uflang','ufsitename','rc','ntitle','pid');
 foreach($gets as $o) {
-	$$o=(isset($_GET[$o]))?$_GET[$o]:'';
-	if(!$$o) $$o=(isset($_POST[$o]))?$_POST[$o]:'';
+	$$o=(isset($_GET[$o]) && is_string($_GET[$o]))?$_GET[$o]:'';
+	if(!$$o) $$o=(isset($_POST[$o]) && is_string($_POST[$o]))?$_POST[$o]:'';
 }
 if($pid) {
 	$pid = base64_decode($pid);
@@ -1467,10 +1567,10 @@ $cStyle=(isset($_COOKIE['CookieStyle']))?$_COOKIE['CookieStyle']:'defaut';
 */
 if (!empty($cLogin) && !empty($cPass)) {
 	list($ismember,$goodpass,$isadmin)=$forum->checkMember($cLogin,$cPass);
-	$havemp=@file_exists('membres/'.$cLogin.'/'.$cLogin.'.mp');
+	$havemp=@file_exists(U_MEMBER.$cLogin.'/'.$cLogin.'.mp');
 	if(!$ismember || !$goodpass) {
-		if(!$goodpass) $error .= 'Mauvais mot de passe pour '.$cLogin.' !<br />';
-		if(!$ismember) $error .= 'Attention : l\'identifiant '.$cLogin.' est sensible à la casse !<br />';
+		if(!$goodpass) $error .= 'Mauvais mot de passe pour '.$cLogin.' !<br>';
+		if(!$ismember) $error .= 'Attention : l\'identifiant '.$cLogin.' est sensible à la casse !<br>';
 		$ismember=0;
 		$isadmin=0;
 		setCookie('CookiePassword', '', time());
@@ -1488,7 +1588,7 @@ if ($ismember && $logout) {
 	exit();
 }
 if($style) { setCookie('CookieStyle',$style,time()+(3600*24*30)); $cStyle=$style; }
-if($delprivate) { unlink('membres/'.$cLogin.'/'.$cLogin.'.mp'); $havemp=0;}
+if($delprivate) { unlink(U_MEMBER.$cLogin.'/'.$cLogin.'.mp'); $havemp=0;}
 /**
 *
 * DIFFÉRENTES ACTIONS
@@ -1508,7 +1608,7 @@ case 'newuser':
 	if(in_array($login,$forum->listMember())) $error .= 'Cet utilisateur existe déjà !';
 	else if($login != '' && $password != '' && $email != ''){
 		if((preg_match('/(^[0-9a-zA-Z_\.-]{1,}@[0-9a-zA-Z_\-]{1,}\.[0-9a-zA-Z_\-]{2,}$)/', $email)) && (strlen($login)<13)) {
-			$memberDir = 'membres/'.$login;
+			$memberDir = U_MEMBER.$login;
 			@mkdir($memberDir);
 			$avatar=checkUpload($memberDir,1);
 			$forum->addMember($login,$password,$email,$signature,$site,$birthday,$avatar);
@@ -1524,7 +1624,7 @@ case 'newuser':
 	}
 		break;
 case 'editprofil':
-	$memberDir = 'membres/'.$cLogin;
+	$memberDir = U_MEMBER.$cLogin;
 	if( preg_match('/(^[0-9a-zA-Z_\.-]{1,}@[0-9a-zA-Z_\-]{1,}\.[0-9a-zA-Z_\-]{2,}$)/', $email)) {
 		$avatar=checkUpload($memberDir,1);
 		if($avatar && $error!="") {
@@ -1543,11 +1643,11 @@ case 'newpost':
 		} else if ($forum->isMember($anonymous)) {
 		    $error .= 'Un membre est déjà inscrit sous ce pseudonyme.';
 		} else {
-			if($s = implode('', file('messages/'.$topicID.'.dat'))) {
+			if($s = implode('', file(U_THREAD.$topicID.'.dat'))) {
 				$tLogin=$cLogin?$cLogin:$anonymous;
 				$topicObj = unserialize($s);
 				$message = clean($message);
-				$topicObj->addReply($tLogin,$message,checkUpload('membres/'.$tLogin,0));
+				$topicObj->addReply($tLogin,$message,checkUpload(U_MEMBER.$tLogin,0));
 				list($time,$title,$auth,$post,$last,$tlast,$attach,$postType)=$topicObj->getInfo(0);
 				$forum->updateTopic($time,$title,$auth,$post,$last,$tlast,$attach,$postType);
 				if($ismember) $forum->setPost($cLogin);
@@ -1567,7 +1667,7 @@ case 'newtopic':
 			$tLogin=$cLogin?$cLogin:$anonymous;
 			$postType=$postit?1:0;
 			$message = clean($message);
-			$topicObj = new Topic($tLogin,$titre,$message,checkUpload('membres/'.$tLogin,0),$postType);
+			$topicObj = new Topic($tLogin,$titre,$message,checkUpload(U_MEMBER.$tLogin,0),$postType);
 			list($time,$title,$auth,$post,$last,$tlast,$attach,$postit)=$topicObj->getInfo(0);
 			$forum->addTopic($title,$auth,$time,$attach,$postit);
 			$topic=$time;
@@ -1576,8 +1676,8 @@ case 'newtopic':
 	}
 	break;
 case 'mp':
-	if(file_exists('membres/'.$mpTo.'/'.$mpTo.'.mp')) {
-		$s=implode('', file('membres/'.$mpTo.'/'.$mpTo.'.mp'));
+	if(file_exists(U_MEMBER.$mpTo.'/'.$mpTo.'.mp')) {
+		$s=implode('', file(U_MEMBER.$mpTo.'/'.$mpTo.'.mp'));
 		$mpObj=unserialize($s);
 	}
 	else $mpObj= new Messages($mpTo);
@@ -1597,8 +1697,9 @@ case 'editoption':
 	$forumMode=$fmode?1:0;
 	$quoteMode=$qmode?1:0;
 	$siteUrl=$ufsite?$ufsite:'';
+	$lang=$uflang?$uflang:'fr';
 	$siteName=$ufsitename?$ufsitename:'Retour';
-	$config ="<?\$uforum='$uforum';\$utitle='$uftitle';\$lang='francais';\$nbrMsgIndex=$nbrMsgIndex;\$extensionsAutorises='$extStr';\$maxAvatarSize=$maxAvatarSize;\$forumMode=$forumMode;\$quoteMode=$quoteMode;\$siteUrl='$siteUrl';\$siteName='$siteName';\$siteBase='$siteBase';?>";
+	$config ="<?\$uforum='$uforum';\$utitle='$uftitle';\$lang=$uflang;\$nbrMsgIndex=$nbrMsgIndex;\$extensionsAutorises='$extStr';\$maxAvatarSize=$maxAvatarSize;\$forumMode=$forumMode;\$quoteMode=$quoteMode;\$siteUrl='$siteUrl';\$siteName='$siteName';\$siteBase='$siteBase';?>";
 	if($h=@fopen('config.php','w')) {fputs($h,$config);fclose($h);}
 	if(empty($message) && file_exists('welcome.txt')) @unlink('welcome.txt');
 	else {
@@ -1615,7 +1716,7 @@ if($isadmin) {
 	else if($topic && $postit && !$action) { $type=$postit=="on"?1:0; $forum->setType($topic,$type); }
 	else if($topic && $ntitle) { $forum->setTitle($topic,$ntitle); }
 	else if($topicID && $action=='editpost' && $postID && $message!='') {
-		if($s = implode('', file('messages/'.$topicID.'.dat'))) {
+		if($s = implode('', file(U_THREAD.$topicID.'.dat'))) {
 			$message = clean($message);
 			$message = '[e]'.$cLogin.' le '.date('d/m/y \à H:i',time()).'[/e]'.$message;
 			$topicObj = unserialize($s);
@@ -1625,13 +1726,13 @@ if($isadmin) {
 	}
 	else if($topic && $delpost) {
 		if($topic==$delpost) {
-			if(@unlink('messages/'.$topic.'.dat')) {
+			if(@unlink(U_THREAD.$topic.'.dat')) {
 				$forum->delTopic($topic);
 				header('Location: index.php');
 				exit();
 			}
 		} else {
-			if($s=implode('', file('messages/'.$topic.'.dat'))) {
+			if($s=implode('', file(U_THREAD.$topic.'.dat'))) {
 				$topicObj = unserialize($s);
 				$r=$topicObj->getReply($delpost);
 				@unlink($r[3]);
@@ -1641,12 +1742,12 @@ if($isadmin) {
 			}
 		}
 	}
-	else if($backup) {$r=do_backup(array('membres','messages'));}
+	else if($backup) {$r=do_backup(array(U_MEMBER,U_THREAD));}
 	else if($restore && $action=='restore') {
 		if(@is_uploaded_file($_FILES['backup']['tmp_name']) && preg_match('/.gz$/i',$_FILES['backup']['name'])) {
 			$r=restore_forum($_FILES['backup']['tmp_name']);
 		} else if(file_exists('backup/forumbkp.gz')) $r=restore_forum('backup/forumbkp.gz');
-		$error .='Restauration réussie de '.$r[1].' fichiers.<br />';
+		$error .='Restauration réussie de '.$r[1].' fichiers.<br>';
 		$restore=0;
 		$r=init_forum();
 	}
@@ -1658,7 +1759,7 @@ header('Content-Type: text/html; charset=utf-8');
 */
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<? echo $lang; ?>">
   <head>
     <meta charset="utf-8"> 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">   
@@ -1699,21 +1800,25 @@ echo '    <div class="container-narrow">
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                   </a>
-                  <a class="brand" href="#">'.$tmp.'</a>
-                  <div class="nav-collapse collapse navbar-responsive-collapse">
-                    <ul class="nav">';
-        if($ismember || !$forumMode){ echo menu(); }       
-echo '              </ul>';
+                  <a class="brand" href="./" title="Accueil du Forum">'.$tmp.'</a>
+                  <div class="nav-collapse collapse navbar-responsive-collapse">';
+        //if($ismember || !$forumMode){ echo menu(); } 
+                       echo menu();      
         if($ismember || !$forumMode){ echo menu_admin(); }
 echo '            </div><!-- /.nav-collapse -->
                 </div>
               </div><!-- /navbar-inner -->
             </div><!-- /navbar -->
           <div>
-      <hr>';
+      <hr />
+<noscript><div class="alert alert-block alert-error">
+  <button type="button" class="close" data-dismiss="alert"><i class="icon-warning-sign"></i></button>
+  <h4>Javascript désactivé détecté</h4>
+  Vous avez actuellement le javascript qui est désactivé. Plusieurs fonctionnalités peuvent ne pas marcher. Veuillez réactiver le javascript pour accéder à toutes les fonctionnalités. 
+</div></noscript>';
 
 // message d erreur ( en cas de mauvais password, user deja existant etc...)
-if($error != '') { echo '<div class="alert"><button type="button" class="close" data-dismiss="alert">&times;</button>'.$error.'</div>'; }
+if($error != '') { echo '<div class="alert alert-block"><button type="button" class="close" data-dismiss="alert">&times;</button>'.$error.'<div class="clearfix"></div></div>'; }
 
 if($ismember || !$forumMode){
     echo breadcrumbs();
@@ -1726,17 +1831,17 @@ if($ismember || !$forumMode){
 	else if($private) echo replyForm('mp',$private);
 	else if($restore) echo frestore();
 	else { echo showTopics(); $st=1; }
-	if(!$forumMode && !$ismember) { echo loginForm(); if(isset($st)) echo welcomeText();}
+	if(!$forumMode && !$ismember) { echo registerForm(); if(isset($st)) echo welcomeText();}
 	if($havemp) echo showPrivateMsg();
 } else {
-	echo loginForm();
+	echo registerForm();
 	echo welcomeText();
 }
 
 
 $arr_cnct=$conn->updateVisit($cLogin);
 $stats=$forum->getStat();
-echo '<hr>
+echo '<hr />
 
       <div class="row-fluid container-narrow">
        <div class="span12 well">
@@ -1762,17 +1867,17 @@ echo ' </p>
        </div>
       </div>';
 
-echo '<hr>
+echo '<hr />
 
 
       <div class="footer container-narrow">
-        <p>Copyright © 2010-'.date('Y').' '.$tmp.', tous droits réservés. <span class="pull-right">Propulsé par <a id="bottom" name="bottom" href="http://uforum.byethost5.com" rel="tooltip" title="Forum sans Sql">µForum v'.$version.'</a>  <a href="'.$_SERVER['REQUEST_URI'].'#top" rel="tooltip" title="Haut de page"><i class="icon-chevron-up"></i></a></span></p>
+        <p>Copyright © 2010-'.date('Y').' '.$tmp.', tous droits réservés. <span class="pull-right">Propulsé par <a id="bottom" name="bottom" href="http://uforum.byethost5.com" rel="tooltip" title="Forum sans Sql">µForum v'.$version.'</a>  <a href="'.baseURL().'#top" rel="tooltip" title="Haut de page"><i class="icon-chevron-up"></i></a></span></p>
       </div>';
 ?>
     <!-- Le javascript
     ================================================== -->
     <script type="text/javascript">//<![CDATA[
-var activeSub=0;var SubNum=0;var timerID=null;var timerOn=false;var timecount=300;var what=null;var newbrowser=true;var check=false;var layerRef="";var tm="";var confirmMsg="Confirmez la suppression de ";var msie=navigator.userAgent.toLowerCase().indexOf("msie")+1;wmtt=null;document.onmousemove=updateWMTT;function init(){if(document.layers){layerRef="document.layers";styleSwitch="";visibleVar="show";what="ns4"}else{if(document.all){layerRef="document.all";styleSwitch=".style";visibleVar="visible";what="ie"}else{if(document.getElementById){layerRef="document.getElementByID";styleSwitch=".style";visibleVar="visible";what="moz"}else{what="none";newbrowser=false}}}check=true}function switchLayer(a){if(check){if(what=="none"){return}else{if(what=="moz"){if(document.getElementById(a).style.visibility=="visible"){document.getElementById(a).style.visibility="hidden";document.getElementById(a).style.display="none"}else{document.getElementById(a).style.visibility="visible";document.getElementById(a).style.display="block"}}else{if(document.all[a].style.visibility=="visible"){document.all[a].style.visibility="hidden";document.all[a].style.display="none"}else{document.all[a].style.visibility="visible";document.all[a].style.display="block"}}}}else{return}}function countInstances(c,b){var a=document.formulaire.message.value.split(c);var d=document.formulaire.message.value.split(b);return a.length+d.length-2}function insert(e,c){var b=document.getElementById("message");if(document.selection){var g=document.selection.createRange().text;document.formulaire.message.focus();var d=document.selection.createRange();if(c!=""){if(g==""){var f=countInstances(e,c);if(f%2!=0){d.text=d.text+c}else{d.text=d.text+e}}else{d.text=e+d.text+c}}else{d.text=d.text+e}}else{if(b.selectionStart|b.selectionStart==0){if(b.selectionEnd>b.value.length){b.selectionEnd=b.value.length}var h=b.selectionStart;var a=b.selectionEnd+e.length;b.value=b.value.slice(0,h)+e+b.value.slice(h);b.value=b.value.slice(0,a)+c+b.value.slice(a);b.selectionStart=h+e.length;b.selectionEnd=a;b.focus()}else{var d=document.formulaire.message;var f=countInstances(e,c);if(f%2!=0&&c!=""){d.value=d.value+c}else{d.value=d.value+e}}}}function updateWMTT(a){if(document.documentElement.scrollTop&&msie){x=window.event.x+document.documentElement.scrollLeft+10;y=window.event.y+document.documentElement.scrollTop+10}else{x=(document.all)?window.event.x+document.body.scrollLeft+10:(a.pageX+10)+"px";y=(document.all)?window.event.y+document.body.scrollTop+10:(a.pageY+10)+"px"}if(wmtt!=null){wmtt.style.left=x;wmtt.style.top=y}}function showWMTT(a){wmtt=document.getElementById(a);wmtt.style.display="block"}function hideWMTT(){wmtt.style.display="none";wmtt=null}function quote(c,f){var a=document.getElementById("td"+f).innerHTML;var b=new Array("<fieldset.*?>.*?</fieldset>","<br>|<br />","<small>.*?</small>|<pre>|</pre>|<font.*?>|</font>|&nbsp;","<b>","</b>","<i>","</i>","<u>","</u>","&amp;lt;|&lt;","&amp;gt;|&gt;","<hr>",'<img(.*?)src="pictures/(.*?)"(.*?)>');var e=new Array("","\n","","[b]","[/b]","[i]","[/i]","[u]","[/u]","<",">","[hr]","[sm=$2]");var d=0;for(i in b){regex=new RegExp(b[i],"gi");a=a.replace(regex,e[d++])}if(document.getElementById("form").style.visibility!="visible"){switchLayer("form")}document.getElementById("message").value+="[q="+c+"]"+a+"[/q]\n"}function confirmLink(b,c){var a=confirm(confirmMsg+" :\n"+c);if(a){b.href+="&amp;do=1"}return a}    
+var activeSub=0;var SubNum=0;var timerID=null;var timerOn=false;var timecount=300;var what=null;var newbrowser=true;var check=false;var layerRef="";var tm="";var confirmMsg="Confirmez la suppression de ";var msie=navigator.userAgent.toLowerCase().indexOf("msie")+1;wmtt=null;document.onmousemove=updateWMTT;function init(){if(document.layers){layerRef="document.layers";styleSwitch="";visibleVar="show";what="ns4"}else{if(document.all){layerRef="document.all";styleSwitch=".style";visibleVar="visible";what="ie"}else{if(document.getElementById){layerRef="document.getElementByID";styleSwitch=".style";visibleVar="visible";what="moz"}else{what="none";newbrowser=false}}}check=true}function switchLayer(a){if(check){if(what=="none"){return}else{if(what=="moz"){if(document.getElementById(a).style.visibility=="visible"){document.getElementById(a).style.visibility="hidden";document.getElementById(a).style.display="none"}else{document.getElementById(a).style.visibility="visible";document.getElementById(a).style.display="block"}}else{if(document.all[a].style.visibility=="visible"){document.all[a].style.visibility="hidden";document.all[a].style.display="none"}else{document.all[a].style.visibility="visible";document.all[a].style.display="block"}}}}else{return}}function countInstances(c,b){var a=document.formulaire.message.value.split(c);var d=document.formulaire.message.value.split(b);return a.length+d.length-2}function insert(e,c){var b=document.getElementById("message");if(document.selection){var g=document.selection.createRange().text;document.formulaire.message.focus();var d=document.selection.createRange();if(c!=""){if(g==""){var f=countInstances(e,c);if(f%2!=0){d.text=d.text+c}else{d.text=d.text+e}}else{d.text=e+d.text+c}}else{d.text=d.text+e}}else{if(b.selectionStart|b.selectionStart==0){if(b.selectionEnd>b.value.length){b.selectionEnd=b.value.length}var h=b.selectionStart;var a=b.selectionEnd+e.length;b.value=b.value.slice(0,h)+e+b.value.slice(h);b.value=b.value.slice(0,a)+c+b.value.slice(a);b.selectionStart=h+e.length;b.selectionEnd=a;b.focus()}else{var d=document.formulaire.message;var f=countInstances(e,c);if(f%2!=0&&c!=""){d.value=d.value+c}else{d.value=d.value+e}}}}function updateWMTT(a){if(document.documentElement.scrollTop&&msie){x=window.event.x+document.documentElement.scrollLeft+10;y=window.event.y+document.documentElement.scrollTop+10}else{x=(document.all)?window.event.x+document.body.scrollLeft+10:(a.pageX+10)+"px";y=(document.all)?window.event.y+document.body.scrollTop+10:(a.pageY+10)+"px"}if(wmtt!=null){wmtt.style.left=x;wmtt.style.top=y}}function quote(c,f){var a=document.getElementById("td"+f).innerHTML;var b=new Array("<fieldset.*?>.*?</fieldset>","<br>|<br />","<small>.*?</small>|<pre>|</pre>|<font.*?>|</font>|&nbsp;","<b>","</b>","<i>","</i>","<u>","</u>","&amp;lt;|&lt;","&amp;gt;|&gt;","<hr />",'<img(.*?)src="pictures/(.*?)"(.*?)>');var e=new Array("","\n","","[b]","[/b]","[i]","[/i]","[u]","[/u]","<",">","[hr]","[sm=$2]");var d=0;for(i in b){regex=new RegExp(b[i],"gi");a=a.replace(regex,e[d++])}if(document.getElementById("form").style.visibility!="visible"){switchLayer("form")}document.getElementById("message").value+="[q="+c+"]"+a+"[/q]\n"}function confirmLink(b,c){var a=confirm(confirmMsg+" :\n"+c);if(a){b.href+="&amp;do=1"}return a}    
 function checkform(f){var g="";if(f.txtInput.value==""){g+="- Code de sécurité ne doit pas être vide.\n"}if(f.txtInput.value!=""){if(ValidCaptcha(f.txtInput.value)==false){g+="- Code de sécurité ne correspond pas.\n"}}if(g!=""){alert(g);return false}}var a=Math.ceil(Math.random()*9)+"";var b=Math.ceil(Math.random()*9)+"";var c=Math.ceil(Math.random()*9)+"";var d=Math.ceil(Math.random()*9)+"";var e=Math.ceil(Math.random()*9)+"";var code=a+b+c+d+e;document.getElementById("txtCaptcha").value=code;document.getElementById("txtCaptchaDiv").innerHTML=code;function ValidCaptcha(){var g=removeSpaces(document.getElementById("txtCaptcha").value);var f=removeSpaces(document.getElementById("txtInput").value);if(g==f){return true}else{return false}}function removeSpaces(f){return f.split(" ").join("")};
 //]]></script>
 
