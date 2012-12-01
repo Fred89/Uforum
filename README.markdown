@@ -1,4 +1,4 @@
-[***Bienvenue sur µforum v0.6***](http://uforum.byethost5.com/ "Permalink to µForum")
+[***Bienvenue sur µforum v0.9***](http://uforum.byethost5.com/ "Permalink to µForum")
 
  
 Ce forum monothread est basé sur des fichiers uniquement (pas de base de donnée sql).   
@@ -25,6 +25,7 @@ Le concept est un peu différent des autres forums puisque l'information la plus
     ★ Captcha lors de l'inscription.   
     ★ Protection des mails sur la liste des membres pour contrer le spam.   
     ★ Indicateur de message (Status Icône).  
+    ★ Date de naissance + Âge affiché si celle-ci renseignée.
 
 [CC-BY license](http://creativecommons.org/licenses/by/3.0/legalcode "Permalink to Creative Commons Legal Code")
 =======================
