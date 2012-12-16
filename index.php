@@ -344,13 +344,22 @@ function removeAccents($str,$charset='utf-8')
 }
 /**
 *
-* RETOURNE L'URL
+* RETOURNE LA BASE
 */
 function baseURL()
 {
 	$dir = dirname($_SERVER['SCRIPT_NAME']);
 	return 'http://' .$_SERVER['SERVER_NAME'].$dir.($dir === '/'? '' : '/');
 }
+/**
+*
+* RETOURNE L'URL
+*/
+function getURL()
+{
+    $url = (!empty($_SERVER['HTTPS'])) ? "https://".$_SERVER['SERVER_NAME'].$_SERVER['REQUEST_URI'] : "http://".$_SERVER['SERVER_NAME'].$_SERVER['REQUEST_URI'];
+    return $url;
+}    
 /**
 *
 * INITIALISATION
@@ -871,7 +880,7 @@ $buffer .= '
 				$buffer .= "<a class='btn btn-mini btn-inverse' href='?topic=$topic&amp;editpost=$time' rel='tooltip' title='Éditer'><i class='icon-pencil icon-white'></i></a><a class='btn btn-mini btn-inverse' href='?topic=$topic&amp;delpost=$time' rel='tooltip' title='Supprimer' onclick='return confirmLink(this,\"$delmsg\")'><i class='icon-remove icon-white'></i></a>\n";
 			}
 			// Citation
-            $buffer .= '<a class="btn btn-mini" href="'.baseURL().'#bottom" onclick="quote("'.$auth.'",'.$cnt.')" rel="tooltip" title="citer le message de '.$auth.'" /><i class="icon-comment"></i> Citer</a></div></li>
+            $buffer .= '<a class="btn btn-mini" href="' .getURL(). '#bottom" onclick="quote("'.$auth.'",'.$cnt.')" rel="tooltip" title="citer le message de '.$auth.'" /><i class="icon-comment"></i> Citer</a></div></li>
 			<li class="divider"></li>
 			<li class="muted"><i class="icon-time"></i> '.date('d/m/y à H:i', $time).'</li>
 			    </ul>
@@ -1790,7 +1799,9 @@ echo '<link rel="stylesheet" href="css/style_'.$cStyle.'.css" />
     <!--[if lt IE 9]>
       <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]--> 
-              
+    <!-- Chargement de Jquery
+    ================================================== -->    
+    <script src="http://code.jquery.com/jquery.min.js"></script>              
 <?php
 if(preg_match('/.gif$|.jpg$|.png$/i',$uforum) && file_exists($uforum)) {
 	$tmp='<a href="index.php" title="'.clean($siteName).'"><img src="'.$uforum.'" alt="'.clean($siteName).'" /></a>';
@@ -1935,13 +1946,12 @@ echo '<hr />
 
       <div class="footer container-narrow" id="bottom">
         <p>© '.date('Y').' '.$tmp.' est propulsé par <a href="http://uforum.byethost5.com" rel="tooltip" title="Forum ultra légé sans SQL">µForum v'.$version.'</a>  
-             <span class="pull-right"><a href="'.baseURL().'#top" rel="tooltip" title="Haut de page"><i class="icon-chevron-up"></i></a></span>
+             <span class="pull-right"><a href="' .getURL(). '#top" rel="tooltip" title="Haut de page"><i class="icon-chevron-up"></i></a></span>
         </p>
       </div>';
 ?>
     <!-- Le javascript
     ================================================== -->    
-    <script src="http://code.jquery.com/jquery.min.js"></script>
     <script src="http://code.jquery.com/ui/1.9.2/jquery-ui.min.js"></script>  
     <script src="js/bootstrap.js"></script>   
     <script src="js/script.js"></script> 
