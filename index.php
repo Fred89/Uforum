@@ -1076,8 +1076,9 @@ function birthday($birthdate, $pattern = 'eu')
  * Méthode qui traite les champ de type input
  *
 **/
-function input($label, $name, $value='', $type='text', $placeholder='', $maxlength='', $readonly=false, $class='', $icon, $require)
+function input($label, $name, $value='', $type='text', $placeholder='', $maxlength='', $readonly=false, $class='', $icon='', $require='')
 {
+        global $lang;
         $form = '';
 		$form .= '<div class="control-group';
 		if($require)
@@ -1088,7 +1089,9 @@ function input($label, $name, $value='', $type='text', $placeholder='', $maxleng
     <div class="controls">';
 		if($icon)
 			$form .= '<div class="input-prepend">
-			               <span class="add-on"><i class="icon-'.$icon.'"></i></span>';			      
+			               <span class="add-on"><i class="icon-'.$icon.'"></i></span>';	
+		else
+			$form .= '';			               		      
 		if($readonly)
 			$form .= '<input id="'.$name.'" name="'.$name.'" type="'.$type.'" class="readonly" value="'.$value.'"'.($maxlength!=''?' maxlength="'.$maxlength.'"':'').($placeholder!=''?' placeholder="'.$placeholder.'"':'').' readonly="readonly" />';
 		else
@@ -1098,7 +1101,7 @@ function input($label, $name, $value='', $type='text', $placeholder='', $maxleng
      $form .= '</div>
   </div>';
   return $form;
-	}
+}
 /**
  * Méthode qui traite une zone de texte
  *
