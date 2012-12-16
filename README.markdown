@@ -1,4 +1,4 @@
-[***Bienvenue sur µforum v0.9***](http://uforum.byethost5.com/ "Permalink to µForum")
+[***Bienvenue sur µforum v0.9.2b***](http://uforum.byethost5.com/ "Permalink to µForum")
 
  
 Ce forum monothread est basé sur des fichiers uniquement (pas de base de donnée sql).   
