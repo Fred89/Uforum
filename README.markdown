@@ -26,6 +26,8 @@ Le concept est un peu différent des autres forums puisque l'information la plus
     ★ Protection des mails sur la liste des membres pour contrer le spam.   
     ★ Indicateur de message (Status Icône).  
     ★ Date de naissance + Âge affiché si celle-ci renseignée.
+    ★ Date picker (Inscription et édition du profil). 
+    ★ Metas Description pour le SEO.
 
 [CC-BY license](http://creativecommons.org/licenses/by/3.0/legalcode "Permalink to Creative Commons Legal Code")
 =======================
