@@ -402,13 +402,13 @@ function mkressources($d) {
 		$config="<?\$uforum='[b]&micro;[/b]Forum';\$lang='fr';\$metaDesc='Lightweight bulletin board without sql';\$nbrMsgIndex=15;\$extensionsAutorises='gif,bmp,png,jpg,mp3,zip,rar,txt';\$maxAvatarSize=30720;\$forumMode=1;\$quoteMode=1;\$siteUrl='';\$siteName='';\$siteBase='$d';?>";
 		if($h=@fopen('config.php','w')) {fputs($h,utf8_encode($config));fclose($h);}
 
-        $error=  (@mkdir('lang/'))?'&#10004; Création du répertoire lang.<br>' : '&#10008; Echec à la création du répertoire lang<br>';
-        $error=  (@mkdir('backup/'))?'&#10004; Création du répertoire backup.<br>' : '&#10008; Echec à la création du répertoire backup<br>';
-		$error.= (@mkdir(U_DATA))?'&#10004; Création du répertoire data.<br>' : '&#10008; Echec à la création du répertoire data<br>';
-		$error.= (@mkdir(U_MEMBER))?'&#10004; Création du répertoire membres.<br>' : '&#10008; Echec à la création du répertoire membres<br>';
-		$error.= (@mkdir(U_THREAD))?'&#10004; Création du répertoire messages.<br>' : '&#10008; Echec à la création du répertoire messages<br>';
-		$error.= (@mkdir('js/'))?'&#10004; Création du répertoire js.<br>' : '&#10008; Echec à la création du répertoire js<br>';
-		$error.= (mkimg())?'&#10004; Installation des images réussie.<br>' : '&#10008; Echec à l\'installation des images<br>';
+        $error=  (@mkdir('lang/'))? sprintf("&#10004; Création du répertoire lang.\n") : sprintf("&#10008; Echec à la création du répertoire lang.\n");
+        $error=  (@mkdir('backup/'))? sprintf("&#10004; Création du répertoire backup.\n") : sprintf("&#10008; Echec à la création du répertoire backup.\n");
+		$error.= (@mkdir(U_DATA))? sprintf("&#10004; Création du répertoire data.\n") : sprintf("&#10008; Echec à la création du répertoire data.\n");
+		$error.= (@mkdir(U_MEMBER))? sprintf("&#10004; Création du répertoire membres.\n") : sprintf("&#10008; Echec à la création du répertoire membres.\n");
+		$error.= (@mkdir(U_THREAD))? sprintf("&#10004; Création du répertoire messages.\n") : sprintf("&#10008; Echec à la création du répertoire messages.\n");
+		$error.= (@mkdir('js/'))? sprintf("&#10004; Création du répertoire js.\n") : sprintf("&#10008; Echec à la création du répertoire js.\n");
+		$error.= (mkimg())? sprintf("&#10004; Installation des images réussie.\n") : sprintf("&#10008; Echec à l\'installation des images.\n");
 		mkcss();
 		$forum = new Forum();
 		$conn = new Visit();
