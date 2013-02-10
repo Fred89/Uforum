@@ -60,7 +60,7 @@ $img_names = array('smile','wink','laugh','indifferent','sad','wry','tongue','so
 class SaveObj
 {
 	function saveObj() {
-		if($fp=fopen($this->name,'w')) {
+		if($fp=fopen($this->name,'w')) { 
 			fputs($fp, serialize($this));
 			fclose($fp);
 		}
@@ -1759,7 +1759,7 @@ case 'editoption':
 	$lang=$uflang?$uflang:'fr';
 	$metaDesc=$ufmetadesc?$ufmetadesc:'Lightweight bulletin board without sql';
 	$siteName=$ufsitename?$ufsitename:'Retour';
-	$config ="<?\$uforum='$uforum';\$utitle='$uftitle';\$lang=$uflang;\$metaDesc='$ufmetadesc';\$nbrMsgIndex=$nbrMsgIndex;\$extensionsAutorises='$extStr';\$maxAvatarSize=$maxAvatarSize;\$forumMode=$forumMode;\$quoteMode=$quoteMode;\$siteUrl='$siteUrl';\$siteName='$siteName';\$siteBase='$siteBase';?>";
+	$config ="<?\$uforum='$uforum';\$utitle='$uftitle';\$lang='$uflang';\$metaDesc='$ufmetadesc';\$nbrMsgIndex=$nbrMsgIndex;\$extensionsAutorises='$extStr';\$maxAvatarSize=$maxAvatarSize;\$forumMode=$forumMode;\$quoteMode=$quoteMode;\$siteUrl='$siteUrl';\$siteName='$siteName';\$siteBase='$siteBase';?>";
 	if($h=@fopen('config.php','w')) {fputs($h,$config);fclose($h);}
 	if(empty($message) && file_exists('welcome.txt')) @unlink('welcome.txt');
 	else {
