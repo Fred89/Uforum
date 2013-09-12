@@ -1105,7 +1105,7 @@ function showPosts() {
 			if(isset($quotes[$auth])) $buffer .= '<div style="clear:both;margin-top:50px"><blockquote><p>'.$quotes[$auth].'</p></blockquote></div>';
 			$buffer .= "</td></tr><tr><td style='text-align: center'><a href='".$_SERVER['REQUEST_URI']."#bottom' class='btn btn-small btn-orange' onclick='quote(\"$auth\",$cnt)' title='".QUOTE_MSG_FROM." ".$auth."' /><i class='halflings comments'></i> ".QUOTE."</a></td><td>";
 			if($isadmin) { 
-				$delmsg = $cnt?ANSWER_FORM.' '.$auth:' '.WHOLE_TOPIC;
+				$delmsg = $cnt?ANSWER_FROM.' '.$auth:' '.WHOLE_TOPIC;
 				$buffer .= "<a class='btn btn-small' href='?topic=$topic&amp;editpost=$time' title='".EDIT."'><i class='halflings pencil'></i> ".EDIT."</a>&nbsp;<a class='btn btn-small btn-red' href='?topic=$topic&amp;delpost=$time' title='".DEL."' onclick='return confirmLink(this,\"$delmsg\")'><i class='halflings trash'></i> ".DEL."</a>&nbsp;<a class='btn btn-small' href='".$_SERVER['REQUEST_URI']."#bottom' title='".ANSWER."'><i class='halflings share-alt'></i> ".ANSWER."</a>\n";
 			}				
 			if(!empty($attach)){
