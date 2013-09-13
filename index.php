@@ -49,7 +49,7 @@ date_default_timezone_set('Europe/Paris');
 *
 * Vérification de la version de php
 */
-if (version_compare(PHP_VERSION, '5.3', '<')) {
+if (version_compare(PHP_VERSION, '5.1', '<')) {
     die(PHP_VERIF);
 }
 /**
@@ -1076,7 +1076,7 @@ function showPosts() {
 				$buffer .= '<tr><td class="formTD">'.REGISTRED_ON.'</td><td class="tooltipTD">'.date('d M Y à H:i',$time).'</td></tr>';
 				$buffer .= '<tr><td class="formTD">'.EMAIL.'</td><td class="tooltipTD">'.protect_email($mail).'</td></tr>';
 				if(!empty($url)) $buffer .= '<tr><td class="formTD">'.WEBSITE.'</td><td class="tooltipTD">'.$url.'</td></tr>';
-				if(!empty($birthday)) $buffer .= '<tr><td class="formTD">'.BORN_ON.'</td><td class="tooltipTD">'.$birthday.' <span class="badge">'.birthday($birthday, $pattern = 'eu').' '.YEARS_OLD.'</span></td></tr>';
+				if(!empty($birthday)) $buffer .= '<tr><td class="formTD">'.BORN_ON.'</td><td class="tooltipTD">'.$birthday.' <span class="badge">'.birthday($birthday).' '.YEARS_OLD.'</span></td></tr>';
 				if(!empty($quote)) {
 					$buffer .= '<tr><td class="formTD">'.SIGNATURE.'</td><td class="tooltipTD">'.$quote.'</td></tr>';
 					if($quoteMode) $quotes[$m]=$quote;
@@ -1294,18 +1294,16 @@ function datefr($arg)
  * Méthode qui retourne l'âge i18n
  *
 **/
-function birthday($birthdate, $pattern = 'eu')
-{
-    $patterns = array(
-        'eu'    => 'd/m/Y',
-        'mysql' => 'Y-m-d',
-        'us'    => 'm/d/Y',
-    );
-
-    $now      = new DateTime();
-    $in       = DateTime::createFromFormat($patterns[$pattern], $birthdate);
-    $interval = $now->diff($in);
-    return $interval->y;
+function birthday($birthdate) {
+    $birthday = strtotime($birthday);
+    $y = date('Y', $birthday);
+    
+    if (($m = (date('m') - date('m', $birthday))) < 0) {
+        $y++;
+    } elseif ($m == 0 && date('d') - date('d', $birthday) < 0) {
+        $y++;
+    }
+    return date('Y') - $y;
 }
 /**
  * Méthode qui traite les champ de type input
@@ -1355,7 +1353,8 @@ function textarea($label, $name, $value='', $cols='', $rows='', $placeholder='',
 */
 function showMemberlist() {
 	global $isadmin,$cLogin,$forum;
-
+	
+    $annu = '';
 	$toolTip = '';
 	$wd=$isadmin?45:60;
 	$annu .= '<table class="width-100 table-striped"><thead>
@@ -1385,7 +1384,7 @@ function showMemberlist() {
                        <h4>'.MINI_PROFIL_OF.' <b>'.$m.'</b></h4>
                        <p><b>'.REGISTRED_ON.' : </b> '.date('d M Y à H:i',$time).'<br />';
 	                   if(!empty($mail)) $toolTip .= '<b>'.EMAIL.' : </b> '.$mail.'<br />';
-	                   if(!empty($birthday)) $toolTip .= '<b>'.BORN_ON.' : </b> '.$birthday.' <span class="label label-black">'.birthday($birthday, $pattern = 'eu').' '.YEARS_OLD.'</span><br />';
+	                   if(!empty($birthday)) $toolTip .= '<b>'.BORN_ON.' : </b> '.$birthday.' <span class="label label-black">'.birthday($birthday).' '.YEARS_OLD.'</span><br />';
 	                   if(!empty($quote)) {
 		                  $toolTip .= '<b>'.SIGNATURE.' : </b> <blockquote><p class="color-blue">'.$quote.'</p></blockquote><br />';
 	                   }  
